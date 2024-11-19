@@ -5,8 +5,8 @@ pub mod pde {
 
     #[cfg(test)]
     mod tests {
-        use crate::pde::explicit_euler::*;
         use crate::ndiff::central::{CentralDiff, DiffInterface};
+        use crate::pde::explicit_euler::*;
         use ndarray::{concatenate, Array1, Axis};
         use plotters::prelude::*;
         use std::sync::Arc;
@@ -108,40 +108,44 @@ pub mod pde {
             let t_sample = 100000; // number of time steps
             let t_range = vec![0.0, 0.8]; // time range [start, end]
             let x_sample = 1000; // number of spatial points, 1 meaning independent
-            // of space coordinate
+                                 // of space coordinate
             let x_range = vec![0.0, 10.0]; // spatial range [start, end]
             let delta_x = (x_range[1] - x_range[0]) / ((x_sample - 1) as f64);
 
             // define the function (RHS of the ODE)
             // du/dt = D d^2u/dx^2, D = 1
             // initial condition is a triangular pulse
-            let func = Arc::new(move |_t: f64, u: Array1<f64>| -> Result<Array1<f64>, String> {
-                let mut central_diff = CentralDiff::new(u.clone(), false, delta_x, 2);
-                let diff_result = central_diff.differentiate();
+            let func = Arc::new(
+                move |_t: f64, u: Array1<f64>| -> Result<Array1<f64>, String> {
+                    let mut central_diff = CentralDiff::new(u.clone(), false, delta_x, 2);
+                    let diff_result = central_diff.differentiate();
 
-                // handle differentiation errors
-                let diff = match diff_result {
-                    Ok(d) => d,
-                    Err(e) => return Err(format!("Differentiation failed: {:?}", e)),
-                };
+                    // handle differentiation errors
+                    let diff = match diff_result {
+                        Ok(d) => d,
+                        Err(e) => return Err(format!("Differentiation failed: {:?}", e)),
+                    };
 
-                // add zeros at the start and end of the array
-                let padded_diff = concatenate(
-                    Axis(0),
-                    &[
-                        Array1::from_elem(1, 0.).view(),
-                        diff.view(),
-                        Array1::from_elem(1, 0.).view(),
-                    ],
-                )
+                    // add zeros at the start and end of the array
+                    let padded_diff = concatenate(
+                        Axis(0),
+                        &[
+                            Array1::from_elem(1, 0.).view(),
+                            diff.view(),
+                            Array1::from_elem(1, 0.).view(),
+                        ],
+                    )
                     .map_err(|e| format!("Stacking failed: {}", e))?;
 
-                // flatten the 2D array back to a 1D array
-                let result = padded_diff.clone().into_shape_with_order((padded_diff.len(),))
-                    .map_err(|e| format!("Reshaping failed: {}", e))?;
+                    // flatten the 2D array back to a 1D array
+                    let result = padded_diff
+                        .clone()
+                        .into_shape_with_order((padded_diff.len(),))
+                        .map_err(|e| format!("Reshaping failed: {}", e))?;
 
-                Ok(result)
-            });
+                    Ok(result)
+                },
+            );
 
             fn triangular_function(size: usize, start: f64, peak: f64, end: f64) -> Array1<f64> {
                 let mut arr = Array1::zeros(size);
@@ -162,9 +166,7 @@ pub mod pde {
                 }
                 arr * 0.5
             }
-            let initial_condition = triangular_function(
-                x_sample as usize, 0.1, 0.2, 0.3
-            );
+            let initial_condition = triangular_function(x_sample as usize, 0.1, 0.2, 0.3);
             println!("initial condition: {:?}", initial_condition);
 
             // initialize the ExplicitEuler solver
