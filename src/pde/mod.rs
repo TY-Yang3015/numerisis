@@ -39,6 +39,7 @@ pub mod pde {
                 func,
                 initial_condition.clone(),
                 false,
+                None
             );
 
             // solve the ODE
@@ -105,12 +106,16 @@ pub mod pde {
         fn test_explicit_euler_pde() {
             // solve diffusion PDE
 
-            let t_sample = 100000; // number of time steps
+            let t_sample: i32 = 100000; // number of time steps
             let t_range = vec![0.0, 0.8]; // time range [start, end]
             let x_sample = 1000; // number of spatial points, 1 meaning independent
                                  // of space coordinate
             let x_range = vec![0.0, 10.0]; // spatial range [start, end]
             let delta_x = (x_range[1] - x_range[0]) / ((x_sample - 1) as f64);
+
+            // test boundary condition, l = 1, r = 0
+            let r_boundary = Array1::zeros((t_sample - 1) as usize);
+            let l_boundary = Array1::ones((t_sample - 1) as usize);
 
             // define the function (RHS of the ODE)
             // du/dt = D d^2u/dx^2, D = 1
@@ -173,11 +178,12 @@ pub mod pde {
             let mut solver = ExplicitEuler::new(
                 t_sample,
                 t_range.clone(),
-                x_sample,
+                x_sample.try_into().unwrap(),
                 x_range.clone(),
                 func,
                 initial_condition.clone(),
                 false,
+                Some((l_boundary, r_boundary))
             );
 
             // solve the PDE
