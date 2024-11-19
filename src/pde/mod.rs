@@ -44,11 +44,10 @@ pub mod pde {
             // solve the ODE
             match solver.solve() {
                 Ok(solution) => {
-                    println!("Solution computed successfully!");
-                    println!("Solution shape: {:?}", solution.shape());
+                    println!("ODE solution shape: {:?}", solution.shape());
 
                     // last element should be close to 0.3677
-                    println!("Solution:");
+                    println!("solution:");
                     println!("{:?}", solution);
 
                     let time_steps =
@@ -182,8 +181,7 @@ pub mod pde {
             // solve the PDE
             match solver.solve() {
                 Ok(solution) => {
-                    println!("Solution computed successfully!");
-                    println!("Solution shape: {:?}", solution.shape());
+                    println!("PDE solution shape: {:?}", solution.shape());
 
                     let x_steps =
                         Array1::<f64>::linspace(x_range[0], x_range[1], x_sample as usize);
