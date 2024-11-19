@@ -51,7 +51,6 @@ pub mod pde {
                     println!("Solution:");
                     println!("{:?}", solution);
 
-                    // Plotting the solution
                     let time_steps =
                         Array1::<f64>::linspace(t_range[0], t_range[1], t_sample as usize);
                     let solution_values = solution.row(0).to_vec();
@@ -105,8 +104,7 @@ pub mod pde {
 
         #[test]
         fn test_explicit_euler_pde() {
-            // TODO: 加注释
-            // PDE can be reduced to ODE by dropping spatial dependence
+            // solve diffusion PDE
 
             let t_sample = 100000; // number of time steps
             let t_range = vec![0.0, 0.8]; // time range [start, end]
@@ -116,30 +114,30 @@ pub mod pde {
             let delta_x = (x_range[1] - x_range[0]) / ((x_sample - 1) as f64);
 
             // define the function (RHS of the ODE)
-            // du/dt = -u
+            // du/dt = D d^2u/dx^2, D = 1
+            // initial condition is a triangular pulse
             let func = Arc::new(move |_t: f64, u: Array1<f64>| -> Result<Array1<f64>, String> {
-                // Assuming CentralDiff::new and differentiate are defined elsewhere
                 let mut central_diff = CentralDiff::new(u.clone(), false, delta_x, 2);
                 let diff_result = central_diff.differentiate();
 
-                // Handle differentiation errors
+                // handle differentiation errors
                 let diff = match diff_result {
                     Ok(d) => d,
                     Err(e) => return Err(format!("Differentiation failed: {:?}", e)),
                 };
 
-                // Add zeros at the start and end of the array
+                // add zeros at the start and end of the array
                 let padded_diff = concatenate(
                     Axis(0),
                     &[
-                        Array1::from_elem(1, 0.).view(), // Leading zero
+                        Array1::from_elem(1, 0.).view(),
                         diff.view(),
-                        Array1::from_elem(1, 0.).view(), // Trailing zero
+                        Array1::from_elem(1, 0.).view(),
                     ],
                 )
-                    .map_err(|e| format!("Stacking failed: {}", e))?; // Handle stacking error
+                    .map_err(|e| format!("Stacking failed: {}", e))?;
 
-                // Flatten the 2D array back to a 1D array
+                // flatten the 2D array back to a 1D array
                 let result = padded_diff.clone().into_shape_with_order((padded_diff.len(),))
                     .map_err(|e| format!("Reshaping failed: {}", e))?;
 
@@ -147,34 +145,28 @@ pub mod pde {
             });
 
             fn triangular_function(size: usize, start: f64, peak: f64, end: f64) -> Array1<f64> {
-                // Initialize an array with zeros
                 let mut arr = Array1::zeros(size);
 
-                // Calculate the normalization factor
-                let normalization_factor = 1.0 / ((peak - start).max(end - peak)); // Ensures the peak is 1
+                // calculate the normalization factor
+                let normalization_factor = 1.0 / ((peak - start).max(end - peak));
 
                 for (i, x) in arr.iter_mut().enumerate() {
-                    let t = i as f64 / (size as f64 - 1.0); // Normalize index to the range [0, 1]
+                    let t = i as f64 / (size as f64 - 1.0);
 
                     if t >= start && t < peak {
-                        // Rising edge
                         *x = ((t - start) / (peak - start)) * normalization_factor;
                     } else if t >= peak && t <= end {
-                        // Falling edge
                         *x = ((end - t) / (end - peak)) * normalization_factor;
                     } else {
-                        // Zero elsewhere
                         *x = 0.0;
                     }
                 }
-
                 arr * 0.5
             }
-            // u(t=0) = 1
             let initial_condition = triangular_function(
                 x_sample as usize, 0.1, 0.2, 0.3
             );
-            println!("Initial condition: {:?}", initial_condition);
+            println!("initial condition: {:?}", initial_condition);
 
             // initialize the ExplicitEuler solver
             let mut solver = ExplicitEuler::new(
@@ -187,17 +179,12 @@ pub mod pde {
                 false,
             );
 
-            // solve the ODE
+            // solve the PDE
             match solver.solve() {
                 Ok(solution) => {
                     println!("Solution computed successfully!");
                     println!("Solution shape: {:?}", solution.shape());
 
-                    // last element should be close to 0.3677
-                    println!("Solution:");
-                    println!("{:?}", solution);
-
-                    // Plotting the solution
                     let x_steps =
                         Array1::<f64>::linspace(x_range[0], x_range[1], x_sample as usize);
                     let solution_values = solution.column(solution.shape()[1] - 1).to_vec();
@@ -254,7 +241,7 @@ pub mod pde {
                         .draw()
                         .unwrap();
 
-                    println!("Plot saved as 'explicit_euler_ode_result.png'");
+                    println!("Plot saved as 'explicit_euler_pde_result.png'");
                 }
                 Err(err) => {
                     println!("Failed to compute solution: {}", err);
