@@ -1,5 +1,6 @@
 mod explicit_euler;
 mod interface;
+mod stability_test;
 
 pub mod pde {
 
@@ -43,7 +44,7 @@ pub mod pde {
             );
 
             // solve the ODE
-            match solver.solve() {
+            match solver.solve(true) {
                 Ok(solution) => {
                     println!("ODE solution shape: {:?}", solution.shape());
 
@@ -108,8 +109,7 @@ pub mod pde {
 
             let t_sample: i32 = 100000; // number of time steps
             let t_range = vec![0.0, 0.8]; // time range [start, end]
-            let x_sample = 1000; // number of spatial points, 1 meaning independent
-                                 // of space coordinate
+            let x_sample = 1000; // number of spatial points
             let x_range = vec![0.0, 10.0]; // spatial range [start, end]
             let delta_x = (x_range[1] - x_range[0]) / ((x_sample - 1) as f64);
 
@@ -187,7 +187,7 @@ pub mod pde {
             );
 
             // solve the PDE
-            match solver.solve() {
+            match solver.solve(true) {
                 Ok(solution) => {
                     println!("PDE solution shape: {:?}", solution.shape());
 
@@ -201,7 +201,7 @@ pub mod pde {
                     root.fill(&WHITE).unwrap();
 
                     let mut chart = ChartBuilder::on(&root)
-                        .caption("Explicit Euler ODE Solution", ("sans-serif", 50))
+                        .caption("Explicit Euler PDE Solution", ("sans-serif", 50))
                         .margin(20)
                         .x_label_area_size(40)
                         .y_label_area_size(40)

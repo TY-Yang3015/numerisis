@@ -8,4 +8,5 @@ ndarray = "0.16.1"
 ndarray-rand = "0.15.0"
 rayon = "1.10.0"
 plotters = "0.3.7"
+indicatif = "0.17.9"
 

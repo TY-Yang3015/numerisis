@@ -4,6 +4,7 @@ pub use crate::pde::interface::PDESolverInterface;
 use ndarray::{s, Array1, Array2, Array3, Axis};
 use std::sync::Arc;
 use crate::pde::explicit_euler::BoundaryCondition::Tuple;
+use indicatif::ProgressBar;
 
 pub struct ExplicitEuler {
     t_sample: i32,
@@ -127,7 +128,7 @@ impl ExplicitEuler {
 
     }
 
-    fn explicit_euler_core(&mut self) {
+    fn explicit_euler_core(&mut self, use_pbar: bool) {
         let mut solution = Array2::<f64>::zeros((self.x_sample as usize, self.t_sample as usize));
         let mut initial_slice = solution.slice_mut(s![.., 0]);
         initial_slice.assign(&self.initial_condition);
@@ -146,9 +147,14 @@ impl ExplicitEuler {
             }
         }
 
-
         let mut u_current = self.initial_condition.clone();
         let delta_t = (self.t_range[1] - self.t_range[0]) / (self.t_sample - 1) as f64;
+
+        let bar = if use_pbar {
+            Some(ProgressBar::new((self.t_sample - 1) as u64))
+        } else {
+            None
+        };
 
         for (i, mut u_t) in solution
             .slice_mut(s![.., 1..])
@@ -156,6 +162,11 @@ impl ExplicitEuler {
             .enumerate()
         {
             let current_t = self.t_range[0] + i as f64 * delta_t;
+
+            if let Some(ref bar) = bar {
+                bar.inc(1);
+            }
+
             match &self.boundary_condition {
                 BoundaryCondition::None => {
                     let u_next = (self.func)(current_t, u_current.clone()).unwrap() * delta_t + u_current;
@@ -163,16 +174,22 @@ impl ExplicitEuler {
                     u_current = u_next;
                 }
                 Tuple(_l, _r) => {
-                    let u_next = ((self.func)(current_t, u_current.clone()).unwrap() * delta_t + u_current).slice(s![1..-1]).to_owned();
+                    let u_next = ((self.func)(current_t, u_current.clone()).unwrap() * delta_t + u_current)
+                        .slice(s![1..-1])
+                        .to_owned();
                     u_t.slice_mut(s![1..-1]).assign(&u_next);
                     u_current = u_t.to_owned();
                 }
             }
+        }
 
+        if let Some(bar) = bar {
+            bar.finish();
         }
 
         self.solution_mesh = Mesh2D(solution);
     }
+
 }
 
 impl PDESolverInterface for ExplicitEuler {
@@ -195,12 +212,12 @@ impl PDESolverInterface for ExplicitEuler {
         }
     }
 
-    fn solve(&mut self) -> Result<Array2<f64>, String> {
+    fn solve(&mut self, use_pbar: bool) -> Result<Array2<f64>, String> {
         self.parallelize().unwrap();
         self.check_function_sanity();
         self.check_boundary_and_initial_condition_sanity();
         self.generate_spatial_temporal_mesh();
-        self.explicit_euler_core();
+        self.explicit_euler_core(use_pbar);
         match &self.solution_mesh {
             Mesh3D(solution) => panic!("unexpected solution shape: {:?}", solution),
             Mesh2D(solution) => Ok(solution.clone()),
